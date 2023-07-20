@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import pickle
 
 import tensorflow as tf
 from keras import backend as K
@@ -21,7 +22,7 @@ print("[INFO]. Reading the CSV file.")
 train = pd.read_csv('written_name_train_v2.csv')
 valid = pd.read_csv('written_name_validation_v2.csv')
 
-# Showing the sample images
+#Showing the sample images
 # for i in range(6):
 #     ax = plt.subplot(2, 3, i+1)
 #     print(train.loc[i, 'FILENAME'])
@@ -34,32 +35,27 @@ valid = pd.read_csv('written_name_validation_v2.csv')
 #         print(f"Failed to load image: {img_dir}")
 
 # Check for NaNs in our label 
-print("Number of NaNs in train set      : ", train['IDENTITY'].isnull().sum())
-print("Number of NaNs in validation set : ", valid['IDENTITY'].isnull().sum())
+# print("Number of NaNs in train set      : ", train['IDENTITY'].isnull().sum())
+# print("Number of NaNs in validation set : ", valid['IDENTITY'].isnull().sum())
 
 # Removing any NaNs
-# print("[INFO]. Removing the Null values")
 train.dropna(axis=0, inplace=True)
 valid.dropna(axis=0, inplace=True)
 
 #CLEANING PROCESS 
-
-# Unreadable Images 
-
+# 1: Unreadable Images 
 unreadable = train[train['IDENTITY'] == 'UNREADABLE']
 unreadable.reset_index(inplace = True, drop=True)
 train = train[train['IDENTITY'] != 'UNREADABLE']
 valid = valid[valid['IDENTITY'] != 'UNREADABLE']
 
-print("unreadable done")
 
-#Convert all labels to lowercase 
+# 2: Convert all labels to lowercase 
 train['IDENTITY'] = train['IDENTITY'].str.upper()
 valid['IDENTITY'] = valid['IDENTITY'].str.upper()
 train.reset_index(inplace = True, drop=True) 
 valid.reset_index(inplace = True, drop=True)
 
-print("lowercase done")
 
 
 # PREPROCESSING IMAGES FOR TRAINING
@@ -75,11 +71,11 @@ def preprocess(img):
     final_img[:h, :w] = img
     return cv2.rotate(final_img, cv2.ROTATE_90_CLOCKWISE)
 
-train_size = 3000
-valid_size= 300
+# ESTABLISH TRAINING AND VALIDATION SAMPLE SIZE 
+train_size = 10000
+valid_size= 1000
 
-train_x = []
-
+# Function to read the images 
 def read_img(img_path, csv_file):
     img_dir = os.sep.join([img_path, csv_file.loc[i, 'FILENAME']])
     image = cv2.imread(img_dir, cv2.IMREAD_GRAYSCALE)
@@ -87,27 +83,20 @@ def read_img(img_path, csv_file):
     image = image/255.
     return image
     
-
+# Add the processed images to the training sample array 
+train_x = []
 for i in range(train_size):
     image = read_img(r"C:\Users\User\Desktop\github\tuftsProject\train_v2_test", train)
-    # img_dir = os.sep.join([r"C:\Users\User\Desktop\github\tuftsProject\train_v2_test", train.loc[i, 'FILENAME']])
-    # image = cv2.imread(img_dir, cv2.IMREAD_GRAYSCALE)
-    # image = preprocess(image)
-    # image = image/255.
     train_x.append(image)
 
+# Add the processed images to the validation sample array 
 valid_x = []
 for i in range(valid_size):
     image = read_img(r"C:\Users\User\Desktop\github\tuftsProject\validation_v2_test", valid)
-    # img_dir = os.sep.join([r"C:\Users\User\Desktop\github\tuftsProject\validation_v2_test", valid.loc[i, 'FILENAME']])
-    # image = cv2.imread(img_dir, cv2.IMREAD_GRAYSCALE)
-    # #image = cv2.resize(image, (64, 256))
-    # image = preprocess(image)
-    # image = image/255.
     valid_x.append(image)
 
-# print("[INFO]. Reading the images files and creating train ad.")
 
+# CONVERT TO NUMPY ARRAYS 
 train_x = np.array(train_x).reshape(-1, 256, 64, 1)
 valid_x = np.array(valid_x).reshape(-1, 256, 64, 1)
 
@@ -117,6 +106,7 @@ max_str_len = 24 # max length of input labels
 num_of_characters = len(alphabets) + 1 # +1 for ctc pseudo blank
 num_of_timestamps = 64 # max length of predicted labels
 
+# These two functions will convert each letter to a number that computer can read 
 def label_to_num(label):
     label_num = []
     for ch in label:
@@ -134,8 +124,8 @@ def num_to_label(num):
     return ret
 
 # TEST A NAME 
-name = 'JEBASTIN'
-print(name, '\n',label_to_num(name))
+# name = 'JEBASTIN'
+# print(name, '\n',label_to_num(name))
 
 
 # Preparing the images for training 
@@ -161,6 +151,7 @@ for i in range(valid_size):
 # TEST ONE IMAGE 
 # print('True label : ',train.loc[0, 'IDENTITY'] , '\ntrain_y : ',train_y[0],'\ntrain_label_len : ',train_label_len[0], 
 #       '\ntrain_input_len : ', train_input_len[0])
+
 
 # BUILDING MODEL 
 input_data = Input(shape=(256, 64, 1), name='input')
@@ -219,11 +210,16 @@ model_final = Model(inputs=[input_data, labels, input_length, label_length], out
 # the loss calculation occurs elsewhere, so we use a dummy lambda function for the loss
 model_final.compile(loss={'ctc': lambda y_true, y_pred: y_pred}, optimizer=Adam(lr = 0.0001), metrics=['accuracy'])
 
-# early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-
 history = model_final.fit(x=[train_x, train_y, train_input_len, train_label_len], y=train_output, 
                 validation_data=([valid_x, valid_y, valid_input_len, valid_label_len], valid_output),
-                epochs=32, batch_size=60)
+                epochs=1, batch_size=128)
+
+# Save and load the model
+model_final.save('model2.h5')
+
+loaded_model = tf.keras.models.load_model('model2.h5')
+print("hello")
+
 
 #CHECK PERFORMANCE ON MODEL
 print("accuracy: ")
@@ -240,13 +236,12 @@ prediction = []
 for i in range(valid_size):
     prediction.append(num_to_label(decoded[i]))
 
-
 y_true = valid.loc[0:valid_size, 'IDENTITY']
 correct_char = 0
 total_char = 0
 correct = 0
 
-
+# Loops through validation data and checks for each character and word for the accuracy 
 for i in range(valid_size):
     # print("checkingTotalChar")
     pr = prediction[i]
@@ -259,13 +254,13 @@ for i in range(valid_size):
     print(tr)
 
     for j in range(min(len(tr), len(pr))):
-        print("checkingCorrectChar")
+        #print("checkingCorrectChar")
         if tr[j] == pr[j]:
-            print("checkingCorrectChar2")
+            #print("checkingCorrectChar2")
             correct_char += 1
             
     if pr == tr :
-        print("checkingCorrect")
+        #print("checkingCorrect")
         correct += 1 
 
 print("final pr tr")
@@ -276,20 +271,12 @@ print('Correct characters predicted : %.2f%%' %(correct_char*100/total_char))
 print('Correct words predicted      : %.2f%%' %(correct*100/valid_size))
 
 
-# PREDICTIONS
-
+# PREDICTIONS using test dataset 
 test = pd.read_csv('written_name_test_v2.csv')
 plt.figure(figsize=(15, 10))
 for i in range(6):
     ax = plt.subplot(2, 3, i+1)
     print(test.loc[i, 'FILENAME'])
-
-    #img_dir = '/kaggle/input/handwriting-recognition/test_v2/test/'+test.loc[i, 'FILENAME']
-    # img_dir = os.sep.join([r"C:\Users\User\Desktop\github\tuftsProject\test_v2_test", test.loc[i, 'FILENAME']])
-    # image = cv2.imread(img_dir, cv2.IMREAD_GRAYSCALE)
-    # plt.imshow(image, cmap='gray')
-    # image = preprocess(image)
-    # image = image/255.
 
     image = read_img(r"C:\Users\User\Desktop\github\tuftsProject\test_v2_test", test)
     plt.imshow(image, cmap='gray')
@@ -302,5 +289,5 @@ for i in range(6):
     plt.axis('off')
 
     
-# plt.show()
+plt.show()
 plt.subplots_adjust(wspace=0.2, hspace=-0.8)
