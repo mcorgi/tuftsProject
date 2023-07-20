@@ -1,5 +1,5 @@
 # Handwriting Recognition Project 
-## Ashmi Pednekar, Camila Florencio, Deesha Kapoo, Mari Decker, Sandra Tang 
+## Ashmi Pednekar, Camila Florencio, Deesha Kapoor, Mari Decker, Sandra Tang 
 ### Tufts Coding Academy 2023 
 # Introduction 
 Browser based website with the purpose of letting the user input an image of handwritten text and then outputting the text digitalized. 
