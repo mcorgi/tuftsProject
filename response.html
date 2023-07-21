@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!--Display case-->
+    <title>Click to Text: Result</title>
+    <!---showacases the user where they need to take action for the next step-->
+    <!---display icon for user to take action-->
+    <index rel="icon" type="image/x-icon" href="miniLogo.ico">
+    <meta charset="utf-8">
+    <!--styling icon-->
+    <meta name="viewport" content = "width=device-width">
+    <!-- <link href="./style.css" rel = "stylesheet" type ="text/css"> -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+    <header>
+        <img id = "logo" src="click-to-text.png" alt="Click to Text logo">
+    </header>
+    <!-- NAV BAR -->
+    <nav id = "navbar">
+        <ul>
+            <li class="navBar">
+                <a href ="index.html">Information</a>
+            </li>
+            <li class= "navBar">
+                <a href ="upload">Upload</a>
+            </li>
+        </ul>
+    </nav>
+    <h1> Hello </h1>
+<!--display format-->
+    <h1>{{predicted_string}}</h1>
+    
+    <img src="TRAIN_00001.jpg" alt="Training sample 1">
+
+
+
+
+</body>
+
+   
+
+
+
+</html>
